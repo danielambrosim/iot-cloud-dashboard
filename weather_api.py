@@ -1,6 +1,6 @@
 # weather_api.py
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 import time
 
 class WeatherAPISensor:
@@ -11,12 +11,10 @@ class WeatherAPISensor:
         self.latitude = latitude
         self.longitude = longitude
         self.base_url = "https://api.open-meteo.com/v1/forecast"
-        print(f"✅ Sensor configurado para: {cidade} ({latitude}, {longitude})")
     
     def buscar_temperatura_umidade(self):
         """Busca dados climáticos atuais da API"""
         
-        # Parâmetros da requisição
         params = {
             "latitude": self.latitude,
             "longitude": self.longitude,
@@ -27,20 +25,15 @@ class WeatherAPISensor:
         }
         
         try:
-            # Faz a requisição para a API
-            response = requests.get(self.base_url, params=params)
-            response.raise_for_status()  # Levanta erro se status não for 200
+            response = requests.get(self.base_url, params=params, timeout=30)
+            response.raise_for_status()
             
             dados = response.json()
-            
-            # Extrai os dados atuais
             temperatura = dados.get("current_weather", {}).get("temperature")
             
-            # Para umidade, precisamos pegar do hourly
             hourly_times = dados.get("hourly", {}).get("time", [])
             hourly_umidade = dados.get("hourly", {}).get("relativehumidity_2m", [])
             
-            # Encontra a leitura mais recente
             if hourly_times and hourly_umidade:
                 umidade = hourly_umidade[-1]
             else:
@@ -55,88 +48,40 @@ class WeatherAPISensor:
             }
             
         except requests.exceptions.RequestException as e:
-            print(f"❌ Erro ao buscar dados da API: {e}")
-            return None
-        except KeyError as e:
-            print(f"❌ Erro ao processar dados: {e}")
+            print(f"❌ Erro ao buscar dados da API para {self.cidade}: {e}")
             return None
 
-# Dicionário de cidades brasileiras com coordenadas
-CIDADES_BRASIL = {
-    "são paulo": {"lat": -23.5505, "lon": -46.6333},
-    "rio de janeiro": {"lat": -22.9068, "lon": -43.1729},
-    "belo horizonte": {"lat": -19.9167, "lon": -43.9346},
-    "brasília": {"lat": -15.8267, "lon": -47.9218},
-    "salvador": {"lat": -12.9714, "lon": -38.5014},
-    "fortaleza": {"lat": -3.7319, "lon": -38.5267},
-    "curitiba": {"lat": -25.4284, "lon": -49.2733},
-    "manaus": {"lat": -3.1190, "lon": -60.0217},
-    "recife": {"lat": -8.0476, "lon": -34.8770},
-    "porto alegre": {"lat": -30.0346, "lon": -51.2177}
+# Lista de cidades para monitoramento contínuo
+CIDADES_MONITORADAS = {
+    "São Paulo": {"lat": -23.5505, "lon": -46.6333},
+    "Rio de Janeiro": {"lat": -22.9068, "lon": -43.1729},
+    "Belo Horizonte": {"lat": -19.9167, "lon": -43.9346},
+    "Curitiba": {"lat": -25.4284, "lon": -49.2733},
+    "Porto Alegre": {"lat": -30.0346, "lon": -51.2177},
+    "Salvador": {"lat": -12.9714, "lon": -38.5014},
+    "Fortaleza": {"lat": -3.7319, "lon": -38.5267},
+    "Brasília": {"lat": -15.8267, "lon": -47.9218},
+    "Manaus": {"lat": -3.1190, "lon": -60.0217},
+    "Recife": {"lat": -8.0476, "lon": -34.8770}
 }
 
-# weather_api.py (parte final - substitua as funções escolher_cidade e criar_cidade_personalizada)
-
-def escolher_cidade(interactive=True, cidade_automatica=None):
-    """Permite ao usuário escolher uma cidade ou usa modo automático"""
+def coletar_todas_cidades():
+    """Coleta dados de todas as cidades monitoradas"""
+    resultados = []
     
-    if not interactive and cidade_automatica:
-        # Modo automático (GitHub Actions)
-        cidade = cidade_automatica.lower()
-        if cidade in CIDADES_BRASIL:
-            coords = CIDADES_BRASIL[cidade]
-            print(f"🤖 Modo automático - Cidade selecionada: {cidade.title()}")
-            return cidade.title(), coords["lat"], coords["lon"]
+    for cidade, coords in CIDADES_MONITORADAS.items():
+        sensor = WeatherAPISensor(cidade, coords["lat"], coords["lon"])
+        dados = sensor.buscar_temperatura_umidade()
+        if dados:
+            resultados.append(dados)
+            print(f"✅ {cidade}: {dados['temperatura']}°C, {dados['umidade']}%")
         else:
-            # Cidade não encontrada, usar São Paulo como padrão
-            print(f"⚠️ Cidade '{cidade_automatica}' não encontrada. Usando São Paulo como padrão.")
-            return "São Paulo", CIDADES_BRASIL["são paulo"]["lat"], CIDADES_BRASIL["são paulo"]["lon"]
+            print(f"❌ Falha ao coletar {cidade}")
+        
+        time.sleep(1)  # Pequena pausa entre requisições
     
-    # Modo interativo (quando roda no computador local)
-    print("\n" + "="*50)
-    print("📍 SELECIONE UMA CIDADE PARA MONITORAR O CLIMA")
-    print("="*50)
-    
-    print("\nCidades disponíveis:")
-    cidades_lista = list(CIDADES_BRASIL.keys())
-    for i, cidade in enumerate(cidades_lista, 1):
-        print(f"   {i}. {cidade.title()}")
-    print(f"   {len(cidades_lista)+1}. Digitar outra cidade")
-    
-    try:
-        opcao = int(input("\nEscolha uma opção (número): "))
-        if 1 <= opcao <= len(cidades_lista):
-            cidade = cidades_lista[opcao-1]
-            coords = CIDADES_BRASIL[cidade]
-            return cidade.title(), coords["lat"], coords["lon"]
-        else:
-            return criar_cidade_personalizada()
-    except ValueError:
-        return criar_cidade_personalizada()
+    return resultados
 
-def criar_cidade_personalizada():
-    """Permite criar uma cidade personalizada (apenas modo interativo)"""
-    print("\n🏙️ CIDADE PERSONALIZADA")
-    cidade = input("Digite o nome da cidade: ").strip()
-    if not cidade:
-        cidade = "São Paulo"
-        print(f"⚠️ Usando cidade padrão: {cidade}")
-    
-    print(f"📍 Buscando coordenadas para {cidade}...")
-    lat = float(input("Digite a latitude (ex: -23.5505): "))
-    lon = float(input("Digite a longitude (ex: -46.6333): "))
-    
-    return cidade.title(), lat, lon
-
-if __name__ == "__main__":
-    # Teste rápido
-    cidade, lat, lon = escolher_cidade()
-    sensor = WeatherAPISensor(cidade, lat, lon)
-    dados = sensor.buscar_temperatura_umidade()
-    
-    if dados:
-        print(f"\n🌡️ Temperatura atual: {dados['temperatura']}°C")
-        print(f"💧 Umidade atual: {dados['umidade']}%")
-        print(f"🕐 Atualizado: {dados['timestamp']}")
-        print(f"📍 Cidade: {dados['cidade']}")
-        print(f"🔗 Fonte: {dados['fonte']}")
+def listar_cidades_disponiveis():
+    """Retorna lista de cidades disponíveis para monitoramento"""
+    return list(CIDADES_MONITORADAS.keys())
