@@ -28,6 +28,6 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add iot_data.db
+          git add -f iot_data.db
           git commit -m "🔄 Atualiza dados climáticos $(date '+%Y-%m-%d %H:%M:%S')" || echo "Sem mudanças"
           git push
