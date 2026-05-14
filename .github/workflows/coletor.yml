@@ -22,7 +22,7 @@ jobs:
         run: pip install -r requirements.txt
       
       - name: Coletar dados climáticos
-        run: python main.py --non-interactive --cidade "São Paulo"
+        run: python main.py --non-interactive
       
       - name: Salvar banco de dados
         run: |
