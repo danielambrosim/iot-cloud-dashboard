@@ -1,0 +1,4 @@
+iot_data.db
+__pycache__/
+.venv/
+venv/
