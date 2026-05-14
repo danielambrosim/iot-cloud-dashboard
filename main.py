@@ -1,4 +1,7 @@
+# main.py (versão completa com suporte a GitHub Actions)
+
 import time
+import argparse
 from datetime import datetime
 from database import criar_tabela, inserir_leitura, limpar_dados_antigos
 from weather_api import WeatherAPISensor, escolher_cidade
@@ -47,7 +50,7 @@ class AnalisadorClima:
                 print(f"Temperatura mínima: {min(temperaturas)}°C")
                 print(f"Temperatura média: {sum(temperaturas)/len(temperaturas):.1f}°C")
 
-def simular_sistema():
+def simular_sistema(cidade_automatica=None, interactive=True):
     # Criar tabela
     criar_tabela()
     
@@ -55,8 +58,11 @@ def simular_sistema():
     removidos = limpar_dados_antigos()
     print(f"🗑️ Removidas {removidos} leituras antigas (>30 dias)")
     
-    # Escolher cidade
-    cidade, latitude, longitude = escolher_cidade()
+    # Escolher cidade (modo interativo ou automático)
+    if interactive:
+        cidade, latitude, longitude = escolher_cidade(interactive=True)
+    else:
+        cidade, latitude, longitude = escolher_cidade(interactive=False, cidade_automatica=cidade_automatica)
     
     # Criar sensor com API real
     sensor = WeatherAPISensor(cidade, latitude, longitude)
@@ -68,15 +74,44 @@ def simular_sistema():
     print(f"📍 Cidade monitorada: {cidade}")
     print(f"🗺️ Coordenadas: {latitude}, {longitude}")
     print(f"🔗 Fonte: Open-Meteo API (dados climáticos reais)")
-    print(f"⏱️  Intervalo: 60 segundos entre consultas")
-    print("💡 Dica: A API tem limites, não consultamos com muita frequência")
-    print("\n⏹️ Pressione Ctrl+C para parar\n")
+    
+    if interactive:
+        print(f"⏱️  Intervalo: 60 segundos entre consultas")
+        print("💡 Dica: A API tem limites, não consultamos com muita frequência")
+        print("\n⏹️ Pressione Ctrl+C para parar\n")
+    else:
+        print(f"🤖 Modo automático (GitHub Actions) - Executando uma consulta")
     
     contador = 0
     
     try:
+        # Em modo automático, faz apenas 1 consulta
+        if not interactive:
+            dados = sensor.buscar_temperatura_umidade()
+            
+            if dados and dados["temperatura"] is not None:
+                temperatura = dados["temperatura"]
+                umidade = dados["umidade"]
+                
+                # Salvar no banco
+                inserir_leitura(cidade, temperatura, umidade, dados["fonte"])
+                
+                # Processar análise
+                media = analisador.processar_dados(temperatura, umidade)
+                
+                if media:
+                    print(f"📈 Média últimas 5 leituras: {media:.1f}°C")
+                
+                contador += 1
+                print(f"✅ Coleta concluída! Total de consultas: {contador}")
+            else:
+                print("⚠️ Falha ao obter dados da API.")
+            
+            analisador.gerar_relatorio()
+            return
+        
+        # Modo interativo - loop contínuo
         while True:
-            # Buscar dados reais da API
             dados = sensor.buscar_temperatura_umidade()
             
             if dados and dados["temperatura"] is not None:
@@ -99,7 +134,6 @@ def simular_sistema():
             else:
                 print("⚠️ Falha ao obter dados da API. Tentando novamente...")
             
-            # Aguardar 60 segundos (respeitando limites da API)
             time.sleep(60)
             
     except KeyboardInterrupt:
@@ -111,5 +145,21 @@ def simular_sistema():
         print(f"\n📍 Dados salvos para cidade: {cidade}")
         print("💾 Os dados permanecem no banco para consulta na dashboard")
 
+def main():
+    # Configurar argumentos de linha de comando
+    parser = argparse.ArgumentParser(description='Coletor de dados climáticos IoT')
+    parser.add_argument('--non-interactive', action='store_true', 
+                        help='Executa em modo não interativo (para GitHub Actions)')
+    parser.add_argument('--cidade', type=str, default="São Paulo",
+                        help='Cidade para monitorar (ex: "São Paulo")')
+    
+    args = parser.parse_args()
+    
+    # Executar o sistema
+    simular_sistema(
+        cidade_automatica=args.cidade,
+        interactive=not args.non_interactive
+    )
+
 if __name__ == "__main__":
-    simular_sistema()
+    main()
