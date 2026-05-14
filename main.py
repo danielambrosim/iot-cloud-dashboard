@@ -39,4 +39,4 @@ def coletar_dados():
     print("\n🛑 Encerrando execução...")
 
 if __name__ == "__main__":
-    coletar_dados()
+    coletar_dados() 
