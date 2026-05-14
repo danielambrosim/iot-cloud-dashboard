@@ -12,7 +12,7 @@ def coletar_dados():
     cidades = listar_cidades_disponiveis()
     
     print("="*50)
-    print("🌤️ COLETOR DE DADOS CLIMÁTICOS - GitHub Actions")
+    print("🌤️ COLETOR DE DADOS CLIMÁTICOS")
     print("="*50)
     print(f"📊 Monitorando {len(cidades)} cidades:")
     for cidade in cidades:
