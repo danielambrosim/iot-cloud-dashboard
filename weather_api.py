@@ -75,8 +75,24 @@ CIDADES_BRASIL = {
     "porto alegre": {"lat": -30.0346, "lon": -51.2177}
 }
 
-def escolher_cidade():
-    """Permite ao usuário escolher uma cidade"""
+# weather_api.py (parte final - substitua as funções escolher_cidade e criar_cidade_personalizada)
+
+def escolher_cidade(interactive=True, cidade_automatica=None):
+    """Permite ao usuário escolher uma cidade ou usa modo automático"""
+    
+    if not interactive and cidade_automatica:
+        # Modo automático (GitHub Actions)
+        cidade = cidade_automatica.lower()
+        if cidade in CIDADES_BRASIL:
+            coords = CIDADES_BRASIL[cidade]
+            print(f"🤖 Modo automático - Cidade selecionada: {cidade.title()}")
+            return cidade.title(), coords["lat"], coords["lon"]
+        else:
+            # Cidade não encontrada, usar São Paulo como padrão
+            print(f"⚠️ Cidade '{cidade_automatica}' não encontrada. Usando São Paulo como padrão.")
+            return "São Paulo", CIDADES_BRASIL["são paulo"]["lat"], CIDADES_BRASIL["são paulo"]["lon"]
+    
+    # Modo interativo (quando roda no computador local)
     print("\n" + "="*50)
     print("📍 SELECIONE UMA CIDADE PARA MONITORAR O CLIMA")
     print("="*50)
@@ -99,7 +115,7 @@ def escolher_cidade():
         return criar_cidade_personalizada()
 
 def criar_cidade_personalizada():
-    """Permite criar uma cidade personalizada"""
+    """Permite criar uma cidade personalizada (apenas modo interativo)"""
     print("\n🏙️ CIDADE PERSONALIZADA")
     cidade = input("Digite o nome da cidade: ").strip()
     if not cidade:
@@ -107,7 +123,6 @@ def criar_cidade_personalizada():
         print(f"⚠️ Usando cidade padrão: {cidade}")
     
     print(f"📍 Buscando coordenadas para {cidade}...")
-    # Opcional: usar geocoding para buscar coordenadas automaticamente
     lat = float(input("Digite a latitude (ex: -23.5505): "))
     lon = float(input("Digite a longitude (ex: -46.6333): "))
     
