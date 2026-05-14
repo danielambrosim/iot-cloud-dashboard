@@ -1,0 +1,25 @@
+name: Coletor de Dados Climáticos
+
+on:
+  schedule:
+    # Executa a cada hora
+    - cron: '0 * * * *'
+  workflow_dispatch:  # Permite executar manualmente
+
+jobs:
+  coletar-dados:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Instalar dependências
+      run: pip install -r requirements.txt
+    
+    - name: Executar coleta de dados
+      run: python main.py --non-interactive --cidade "São Paulo"
