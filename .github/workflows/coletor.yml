@@ -1,25 +1,33 @@
-name: Coletor de Dados Climáticos
+name: Coletar Dados Climáticos
 
 on:
   schedule:
-    # Executa a cada hora
-    - cron: '0 * * * *'
-  workflow_dispatch:  # Permite executar manualmente
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
 
 jobs:
   coletar-dados:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Configurar Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-    
-    - name: Instalar dependências
-      run: pip install -r requirements.txt
-    
-    - name: Executar coleta de dados
-      run: python main.py --non-interactive --cidade "São Paulo"
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+      
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+      
+      - name: Coletar dados climáticos
+        run: python main.py --non-interactive --cidade "São Paulo"
+      
+      - name: Salvar banco de dados
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add iot_data.db
+          git commit -m "🔄 Atualiza dados climáticos $(date '+%Y-%m-%d %H:%M:%S')" || echo "Sem mudanças"
+          git push
